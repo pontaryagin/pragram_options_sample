@@ -4,14 +4,22 @@ using namespace std;
 
 namespace po = boost::program_options;
 
-po::variables_map parse_subcommand(const po::parsed_options& parsed, const po::options_description& description)
+po::variables_map parse_subcommand(const po::parsed_options& parsed, 
+    const po::options_description& description,
+    const po::positional_options_description* pos = nullptr)
 {
     // Collect all the unrecognized options from the first pass. This will include the
     // (positional) command name, so we need to erase that.
     std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
     opts.erase(opts.begin());
     po::variables_map vm;
-    po::store(po::command_line_parser(opts).options(description).run(), vm);
+    auto parser = po::command_line_parser(opts)
+        .options(description);
+    if (pos)
+    {
+        parser.positional(*pos);
+    }
+    po::store(parser.run(), vm);
     return vm;
 }
 
@@ -38,6 +46,43 @@ void parse_ls(const po::parsed_options& parsed)
         cout << "extra option true"<<endl;
     }
 }
+
+void parse_subcmd(const po::parsed_options& parsed)
+{
+    po::options_description desc("subcmd options");
+    desc.add_options()
+        ("value", po::value<double>(), "value1")
+        ("value2", po::value<vector<double>>(), "value2")
+        ("value3", po::value<vector<int>>(), "value3");
+    po::positional_options_description pos;
+    pos.add("value3", -1)
+       .add("value2", 2);
+    po::variables_map vm = parse_subcommand(parsed, desc, &pos);
+    {
+        auto s = "value";
+        if (vm.count(s))
+        {
+            cout << s << "=" << vm[s].as<double>() << endl;
+        }
+    }
+    {
+        auto s = "value2";
+        if (vm.count(s))
+        {
+            for(auto x : vm[s].as<vector<double>>())
+                cout << s << "=" << x << endl;
+        }
+    }
+    {
+        auto s = "value3";
+        if (vm.count(s))
+        {
+            for(auto x : vm[s].as<vector<int>>())
+                cout << s << "=" << x << endl;
+        }
+    }
+}
+
 
 void cmd_main(int argc, const char* argv[])
 {
@@ -67,14 +112,13 @@ void cmd_main(int argc, const char* argv[])
     }
 
     std::string cmd = vm["command"].as<std::string>();
-
     if (cmd == "ls")
     {
         parse_ls(parsed);
     }
-    else if (cmd == "subcmd2")
+    else if (cmd == "subcmd")
     {
-        // do something for subcmd2
+        parse_subcmd(parsed);
     }
     else
     {
@@ -84,9 +128,6 @@ void cmd_main(int argc, const char* argv[])
 
 int main(int argc, const char* argv[])
 {
-    string x = "a b 'c d e'";
-    auto p = po::split_unix(x);
-
     cmd_main(argc, argv);
 }
 
