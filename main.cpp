@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/program_options.hpp>
+#include <boost/optional.hpp>
 using namespace std;
 
 namespace po = boost::program_options;
@@ -28,9 +29,14 @@ void parse_ls(const po::parsed_options& parsed)
     string path;
     po::options_description ls_desc("ls options");
     ls_desc.add_options()
+        ("help", "Help msg")
         ("path", po::value<std::string>(&path), "Path to list")
         ("extra_option", "Extra option");
     po::variables_map vm = parse_subcommand(parsed, ls_desc);
+    if (!vm.count("help"))
+    {
+        cout << ls_desc << endl;
+    }
     if (!vm.count("path"))
     {
         cout << "path not specified" << endl;
@@ -58,6 +64,11 @@ void parse_subcmd(const po::parsed_options& parsed)
     pos.add("value3", -1)
        .add("value2", 2);
     po::variables_map vm = parse_subcommand(parsed, desc, &pos);
+
+    if (!vm.count("help"))
+    {
+        cout << desc << endl;
+    }
     {
         auto s = "value";
         if (vm.count(s))
@@ -90,6 +101,7 @@ void cmd_main(int argc, const char* argv[])
     // parse main and store it to vm
     po::options_description global("Global options");
     global.add_options()
+        ("help", "show help message")
         ("debug", "Turn on debug output")
         ("command", po::value<std::string>(), "command to execute")
         ("subargs_s", po::value<std::vector<std::string> >(), "Arguments for command");
@@ -97,7 +109,6 @@ void cmd_main(int argc, const char* argv[])
     po::positional_options_description pos;
     pos.add("command", 1).
         add("subargs_s", -1);
-
 
     po::parsed_options parsed = po::command_line_parser(argc, argv).
         options(global).
@@ -111,18 +122,18 @@ void cmd_main(int argc, const char* argv[])
         cout << "MODE=debug" << endl;
     }
 
-    std::string cmd = vm["command"].as<std::string>();
-    if (cmd == "ls")
+    boost::optional<std::string> cmd = vm.count("command") ? vm["command"].as<std::string>() : boost::optional<std::string>();
+    if (cmd && *cmd == "ls")
     {
         parse_ls(parsed);
     }
-    else if (cmd == "subcmd")
+    else if (cmd && *cmd == "subcmd")
     {
         parse_subcmd(parsed);
     }
     else
     {
-        throw po::invalid_option_value(cmd);
+        cout << global << endl;
     }
 }
 
