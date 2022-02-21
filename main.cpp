@@ -33,11 +33,11 @@ void parse_ls(const po::parsed_options& parsed)
         ("path", po::value<std::string>(&path), "Path to list")
         ("extra_option", "Extra option");
     po::variables_map vm = parse_subcommand(parsed, ls_desc);
-    if (!vm.count("help"))
+    if (vm.count("help"))
     {
         cout << ls_desc << endl;
     }
-    if (!vm.count("path"))
+    if (vm["path"].empty())
     {
         cout << "path not specified" << endl;
     }
